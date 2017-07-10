@@ -1,0 +1,19 @@
+{
+  "name": "file-metadata",
+  "version": "1.0.0",
+  "description": "File Metadata Microservice",
+  "main": "service.js",
+  "scripts": {
+    "test": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sabathh/filemetadata.git"
+  },
+  "author": "tuliosabatino@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sabathh/filemetadata/issues"
+  },
+  "homepage": "https://github.com/Sabathh/filemetadata#readme"
+}
