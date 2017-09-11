@@ -1,0 +1,113 @@
+#Script : CSV Splitter - Developed by: JBFERREI (jbferreira@embraer.com.br)
+
+import os
+import sys
+import glob
+from shutil import copyfile
+
+def splitList(list, n):
+    for i in range(0, len(list), n):
+        yield list[i:i + n]
+
+currentDir = os.getcwd() + "\\"
+csvContent = []
+datContent = []
+
+fileName = sys.argv[1]
+testCaseMaxN = int(sys.argv[2])
+datTemplate = 'datTemplate.txt'
+exeFilePath = os.getcwd() + "\\coreTestHarnessExe\\"
+
+os.chdir(currentDir)
+for file in glob.glob("*.tct"):
+    if fileName.replace('.csv','') in file:
+        tctFile = file
+
+copyfile(tctFile, currentDir + 'coreTestHarnessExe\\' + tctFile)
+
+file = open(fileName,'r')
+for line in file:
+
+    if line[0:4] == '[DAT':
+        database = line
+    elif line[0:4] == '[EDA':
+        engDatabase = line
+    else:
+        csvContent.append(line)
+file.close()
+
+csvFileNumber = len(csvContent) / testCaseMaxN
+csvFileNumberFloat =  len(csvContent) / float(testCaseMaxN)
+
+if csvFileNumberFloat > csvFileNumber:
+    csvFileNumber +=1
+
+testByFile = list(splitList(csvContent,testCaseMaxN))
+
+batFileRunAll = exeFilePath + fileName.replace('.csv','_runAll.bat')
+batFileRunAllExpress = exeFilePath + fileName.replace('.csv','_runAllExpress.bat')
+fileBat = open(batFileRunAll, 'w')
+fileBat2 = open(batFileRunAllExpress, 'w')
+
+for index, csvFile in enumerate(testByFile):
+
+    newFileName = fileName.replace('.csv','')
+    newFileName = newFileName + '_' + str(index + 1) + 'of' +str(csvFileNumber)
+    csvFileName = newFileName + '.csv'
+    file = open(exeFilePath + csvFileName,'w')
+    for test in csvFile:
+        file.write(test)
+    file.write(database)
+    file.write(engDatabase)
+    file.close()
+
+    outputCount = 0
+    newDatFileName = newFileName + '.dat'
+    file = open(datTemplate, 'r')
+    for line in file:
+        if 'arguments' in line:
+            line = line.replace('\n','')
+            line = line + fileName.replace('.csv','.tct') + ' ' + csvFileName + ' ' + csvFileName.replace('.csv','_result.csv') +'\n'
+            datContent.append(line)
+        elif 'transfer_input_files' in line:
+            line = line.replace('\n','')
+            line = line + ', ' + fileName.replace('.csv','.tct') + ', ' + csvFileName +'\n'
+            datContent.append(line)
+        elif (outputCount == 0) and 'output' in line:
+            line = line.replace('\n','')
+            line = line + csvFileName.replace('.csv','_result.csv') +'\n'
+            datContent.append(line)
+            outputCount+=1
+        elif (outputCount == 1) and 'output' in line:
+            line = line.replace('\n','')
+            line = line + csvFileName.replace('.csv','_error.txt') +'\n'
+            outputCount+=1
+            datContent.append(line)
+        elif 'log' in line:
+            line = line.replace('\n','')
+            line = line + csvFileName.replace('.csv','_log.txt') +'\n'
+            datContent.append(line)
+        else:
+            datContent.append(line)
+    file.close()
+
+    file = open(exeFilePath + newDatFileName, 'w')
+    for line in datContent:
+        file.write(line)
+    file.close()
+    datContent = []
+
+    batFile = exeFilePath + newDatFileName.replace('.dat','.bat')
+    file = open(batFile, 'w')
+    file.write('c:\condor\\bin\condor_submit ' + newDatFileName)
+    fileBat.write(('c:\condor\\bin\condor_submit ' + newDatFileName) + '\n')
+    fileBat2.write(('START CMD /C CALL \"'  + newDatFileName.replace('.dat','.bat')) + '\" \n')
+    file.close
+
+fileBat.write('Pause')
+fileBat.close()
+
+print '\n' + fileName + ' splitted!'
+print '.dat files generated'
+print '.bat files generated'
+print '\nThe files are located in: ' + exeFilePath
